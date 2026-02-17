@@ -177,10 +177,60 @@ fi
 rm -rf "$EMPTY_DIR"
 
 # --------------------------------------------------------------------------
-# Test 4: Bundle structure
+# Test 4: Wrapper script forwards flags
 # --------------------------------------------------------------------------
 echo ""
-echo "Test 4: Bundle structure"
+echo "Test 4: Wrapper script flag forwarding"
+
+WRAPPER="$BUNDLE_DIR/executor/amplifier-run.sh"
+
+# Test --model flag forwarding
+# We replace 'amplifier' with a stub that echoes its args, then check output
+STUB_DIR=$(mktemp -d)
+cat > "$STUB_DIR/amplifier" <<'STUB'
+#!/usr/bin/env bash
+echo "ARGS:" "$@"
+STUB
+chmod +x "$STUB_DIR/amplifier"
+
+# --model as two args
+OUTPUT=$(echo "test prompt" | PATH="$STUB_DIR:$PATH" bash "$WRAPPER" --model gpt-4o 2>/dev/null)
+if echo "$OUTPUT" | grep -q -- "--model gpt-4o"; then
+    pass "Forwards --model flag (two-arg form)"
+else
+    fail "Forwards --model flag (two-arg form)" "Got: $OUTPUT"
+fi
+
+# --model=value form
+OUTPUT=$(echo "test prompt" | PATH="$STUB_DIR:$PATH" bash "$WRAPPER" --model=gpt-4o 2>/dev/null)
+if echo "$OUTPUT" | grep -q -- "--model gpt-4o"; then
+    pass "Forwards --model flag (equals form)"
+else
+    fail "Forwards --model flag (equals form)" "Got: $OUTPUT"
+fi
+
+# Prompt still arrives as last positional arg
+if echo "$OUTPUT" | grep -q "test prompt"; then
+    pass "Prompt passed as positional arg after flags"
+else
+    fail "Prompt passed as positional arg after flags" "Got: $OUTPUT"
+fi
+
+# No flags: prompt still works
+OUTPUT=$(echo "bare prompt" | PATH="$STUB_DIR:$PATH" bash "$WRAPPER" 2>/dev/null)
+if echo "$OUTPUT" | grep -q "bare prompt"; then
+    pass "Works with no extra flags"
+else
+    fail "Works with no extra flags" "Got: $OUTPUT"
+fi
+
+rm -rf "$STUB_DIR"
+
+# --------------------------------------------------------------------------
+# Test 5: Bundle structure
+# --------------------------------------------------------------------------
+echo ""
+echo "Test 5: Bundle structure"
 
 for f in bundle.md behaviors/workgraph.yaml context/workgraph-guide.md context/wg-executor-protocol.md agents/workgraph-planner.md; do
     if [ -f "$BUNDLE_DIR/$f" ]; then
@@ -205,10 +255,10 @@ else
 fi
 
 # --------------------------------------------------------------------------
-# Test 5: Task lifecycle with amplifier executor (slow -- needs LLM call)
+# Test 6: Task lifecycle with amplifier executor (slow -- needs LLM call)
 # --------------------------------------------------------------------------
 echo ""
-echo "Test 5: End-to-end task lifecycle"
+echo "Test 6: End-to-end task lifecycle"
 
 if $QUICK_MODE; then
     skip "End-to-end lifecycle (--quick mode)"
@@ -274,11 +324,11 @@ print(task.get('failure_reason', 'unknown'))
                 fail "Task marked as done" "Timed out waiting -- status is: $STATUS"
             fi
 
-            # Check if hello.txt was created
+            # Check if hello.txt was created (task explicitly requires it)
             if [ -f "$E2E_DIR/hello.txt" ]; then
                 pass "Artifact created: hello.txt"
             else
-                skip "Artifact created: hello.txt (agent may not have created file)"
+                fail "Artifact created: hello.txt" "Task marked done but artifact missing"
             fi
         else
             fail "Spawn initiated" "Spawn returned non-zero exit code"

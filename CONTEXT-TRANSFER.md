@@ -2,8 +2,8 @@
 
 ## Current State (as of 2026-02-17)
 
-- **Git**: `main` — 2 commits, remote at `https://github.com/ramparte/amplifier-bundle-workgraph`
-- **Tests**: 17/17 quick, 20/20 full e2e (all passing)
+- **Git**: `main` — 3 commits, remote at `https://github.com/ramparte/amplifier-bundle-workgraph`
+- **Tests**: 21/21 quick (all passing); full e2e adds ~5 more assertions
 - **Bundle loading**: Confirmed working — `workgraph-planner` agent and `workgraph-guide.md` context load correctly
 - **Executor**: End-to-end verified — workgraph spawns Amplifier, agent creates artifacts, task marked done
 
@@ -60,7 +60,7 @@ amplifier-bundle-workgraph/
   executor/amplifier.toml          # Workgraph executor config (type=claude, wrapper command)
   executor/amplifier-run.sh        # NEW: stdin→arg bridge for amplifier
   executor/install.sh              # Installs both TOML + run.sh
-  tests/test_integration.sh        # 17 quick / 20 full e2e tests
+  tests/test_integration.sh        # 21 quick + e2e lifecycle tests
   README.md
 ```
 
