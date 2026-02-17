@@ -1,0 +1,12 @@
+bundle:
+  name: workgraph-behavior
+  version: 0.1.0
+  description: "Adds workgraph task graph awareness and tooling to Amplifier agents"
+
+context:
+  - workgraph:context/workgraph-guide.md
+
+agents:
+  workgraph-planner:
+    source: workgraph:agents/workgraph-planner.md
+    description: "Decomposes complex tasks into workgraph dependency graphs with proper ordering, skills, and verification criteria"
