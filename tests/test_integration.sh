@@ -141,11 +141,25 @@ else
     fail "Executor TOML installed to correct location" "File not found after install"
 fi
 
-# Verify installed file matches source
+# Verify installed TOML matches source
 if diff -q "$TOML_FILE" "$TMPDIR/.workgraph/executors/amplifier.toml" &>/dev/null; then
     pass "Installed TOML matches source"
 else
     fail "Installed TOML matches source" "Files differ"
+fi
+
+# Check wrapper script was installed
+if [ -f "$TMPDIR/.workgraph/executors/amplifier-run.sh" ]; then
+    pass "Wrapper script installed to correct location"
+else
+    fail "Wrapper script installed to correct location" "amplifier-run.sh not found after install"
+fi
+
+# Check wrapper script is executable
+if [ -x "$TMPDIR/.workgraph/executors/amplifier-run.sh" ]; then
+    pass "Wrapper script is executable"
+else
+    fail "Wrapper script is executable" "chmod +x not applied by install script"
 fi
 
 # --------------------------------------------------------------------------
@@ -221,22 +235,43 @@ if tasks:
     if [ -n "$TASK_ID" ]; then
         pass "Retrieved task ID: $TASK_ID"
 
-        # Spawn with amplifier executor (timeout after 120s)
-        echo "  Spawning Amplifier session for task '$TASK_ID' (may take 30-60s)..."
-        if (cd "$E2E_DIR" && timeout 120 wg spawn "$TASK_ID" --executor amplifier 2>/dev/null); then
-            pass "Spawn completed without error"
+        # Spawn with amplifier executor (non-blocking: wg spawn returns after starting the agent)
+        echo "  Spawning Amplifier session for task '$TASK_ID' (may take 30-120s)..."
+        if (cd "$E2E_DIR" && wg spawn "$TASK_ID" --executor amplifier 2>/dev/null); then
+            pass "Spawn initiated without error"
 
-            # Check if task was marked done
-            STATUS=$(cd "$E2E_DIR" && wg show "$TASK_ID" --json 2>/dev/null | python3 -c "
+            # Poll for task completion (wg spawn is non-blocking -- agent runs in background)
+            echo "  Waiting for agent to complete..."
+            DEADLINE=$((SECONDS + 120))
+            STATUS="in-progress"
+            while [ $SECONDS -lt $DEADLINE ]; do
+                sleep 5
+                STATUS=$(cd "$E2E_DIR" && wg show "$TASK_ID" --json 2>/dev/null | python3 -c "
 import json, sys
 task = json.load(sys.stdin)
 print(task.get('status', 'unknown'))
 " 2>/dev/null)
+                if [ "$STATUS" = "done" ] || [ "$STATUS" = "Done" ] || [ "$STATUS" = "failed" ] || [ "$STATUS" = "Failed" ]; then
+                    break
+                fi
+                echo "  Still running (status: $STATUS)..."
+            done
 
             if [ "$STATUS" = "done" ] || [ "$STATUS" = "Done" ]; then
                 pass "Task marked as done"
+            elif [ "$STATUS" = "failed" ]; then
+                REASON=$(cd "$E2E_DIR" && wg show "$TASK_ID" --json 2>/dev/null | python3 -c "
+import json, sys
+task = json.load(sys.stdin)
+print(task.get('failure_reason', 'unknown'))
+" 2>/dev/null)
+                fail "Task marked as done" "Task failed: $REASON"
+                # Show output log for debugging
+                echo "  --- Output log ---"
+                cat "$E2E_DIR/.workgraph/agents/agent-1/output.log" 2>/dev/null | tail -30
+                echo "  --- End log ---"
             else
-                fail "Task marked as done" "Status is: $STATUS"
+                fail "Task marked as done" "Timed out waiting -- status is: $STATUS"
             fi
 
             # Check if hello.txt was created
@@ -246,7 +281,7 @@ print(task.get('status', 'unknown'))
                 skip "Artifact created: hello.txt (agent may not have created file)"
             fi
         else
-            fail "Spawn completed" "Spawn timed out or failed"
+            fail "Spawn initiated" "Spawn returned non-zero exit code"
         fi
     else
         fail "Retrieved task ID" "Could not get task ID from wg list"

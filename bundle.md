@@ -4,7 +4,7 @@ bundle:
   version: 0.1.0
   description: "Workgraph integration for Amplifier -- dependency-aware task graph coordination"
 includes:
-  - behaviors/workgraph.yaml
+  - bundle: workgraph:behaviors/workgraph
 ---
 
 # Workgraph Integration

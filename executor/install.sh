@@ -25,8 +25,10 @@ fi
 # Create executors directory if needed
 mkdir -p "$PROJECT_DIR/.workgraph/executors"
 
-# Copy executor config
+# Copy executor config and wrapper script
 cp "$SCRIPT_DIR/amplifier.toml" "$PROJECT_DIR/.workgraph/executors/amplifier.toml"
+cp "$SCRIPT_DIR/amplifier-run.sh" "$PROJECT_DIR/.workgraph/executors/amplifier-run.sh"
+chmod +x "$PROJECT_DIR/.workgraph/executors/amplifier-run.sh"
 
 echo "Installed Amplifier executor to $PROJECT_DIR/.workgraph/executors/amplifier.toml"
 echo ""

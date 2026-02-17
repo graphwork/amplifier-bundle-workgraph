@@ -6,9 +6,12 @@
 # Set as default: wg config coordinator.executor amplifier
 
 [executor]
-type = "amplifier"
-command = "amplifier"
-args = ["run", "--mode", "single", "--output-format", "json"]
+# type = "claude" makes workgraph generate: cat prompt.txt | command
+# This is how workgraph pipes the rendered prompt to our wrapper script.
+# For non-claude types, stdin is null and no prompt is passed.
+type = "claude"
+command = ".workgraph/executors/amplifier-run.sh"
+args = []
 working_dir = "{{working_dir}}"
 timeout = 600
 
