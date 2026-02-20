@@ -1,9 +1,10 @@
 ---
 bundle:
   name: workgraph
-  version: 0.1.0
+  version: 0.2.0
   description: "Workgraph integration for Amplifier -- dependency-aware task graph coordination"
 includes:
+  - bundle: git+https://github.com/microsoft/amplifier-foundation@main
   - bundle: workgraph:behaviors/workgraph
 ---
 

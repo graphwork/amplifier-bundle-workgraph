@@ -56,7 +56,7 @@ cp executor/amplifier.toml /path/to/your/project/.workgraph/executors/
 
 # Set as default executor
 cd /path/to/your/project
-wg config coordinator.executor amplifier
+wg config --coordinator-executor amplifier
 ```
 
 Now `wg service start` will use Amplifier for all spawned agents. Each task gets a full Amplifier session with tools, delegation, and the full bundle ecosystem.

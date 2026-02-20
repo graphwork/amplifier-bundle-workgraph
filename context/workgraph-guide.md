@@ -67,6 +67,8 @@ wg forecast       # Completion estimate
 | `wg log <ID> <MSG>` | Add progress note |
 | `wg artifact <ID> <PATH>` | Record produced file |
 | `wg retry <ID>` | Reset failed -> open |
+| `wg unclaim <ID>` | Release a claimed task back to open |
+| `wg abandon <ID>` | Mark task as abandoned (will not be retried) |
 
 ### Querying
 
@@ -92,6 +94,7 @@ wg forecast       # Completion estimate
 | `wg velocity` | Task completion rate over time |
 | `wg analyze` | Comprehensive health report |
 | `wg coordinate` | Parallel execution opportunities |
+| `wg loops` | Analyze cyclic edges and iteration state |
 
 ### Service Daemon
 
@@ -200,7 +203,7 @@ To let workgraph spawn Amplifier sessions, install the executor:
 cp executor/amplifier.toml .workgraph/executors/amplifier.toml
 
 # Set as default
-wg config coordinator.executor amplifier
+wg config --coordinator-executor amplifier
 ```
 
 Then `wg service start` will use Amplifier for all spawned agents.

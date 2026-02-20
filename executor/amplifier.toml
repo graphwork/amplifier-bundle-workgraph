@@ -3,7 +3,7 @@
 # Install: copy to .workgraph/executors/amplifier.toml
 # Or run:  ./install.sh from this directory
 #
-# Set as default: wg config coordinator.executor amplifier
+# Set as default: wg config --coordinator-executor amplifier
 
 [executor]
 # type = "claude" makes workgraph generate: cat prompt.txt | command
@@ -11,7 +11,7 @@
 # For non-claude types, stdin is null and no prompt is passed.
 type = "claude"
 command = ".workgraph/executors/amplifier-run.sh"
-args = []
+args = ["--bundle", "workgraph"]
 working_dir = "{{working_dir}}"
 timeout = 600
 
