@@ -6,6 +6,10 @@ bundle:
 includes:
   - bundle: git+https://github.com/microsoft/amplifier-foundation@main
   - bundle: workgraph:behaviors/workgraph
+hooks:
+  - module: hook-shell
+    config:
+      enabled: true
 ---
 
 # Workgraph Integration

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Amplifier executor wrapper for Workgraph.
+# amplifier-bundle-workgraph v0.2.0
 #
 # Workgraph pipes the rendered prompt template via stdin.
 # `amplifier run --mode single` requires the prompt as a positional argument.
@@ -21,11 +22,17 @@ EXTRA_ARGS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --model)
-            EXTRA_ARGS+=("--model" "$2")
+            # Skip "default" — let amplifier use its configured default model
+            if [[ "$2" != "default" ]]; then
+                EXTRA_ARGS+=("--model" "$2")
+            fi
             shift 2
             ;;
         --model=*)
-            EXTRA_ARGS+=("--model" "${1#--model=}")
+            _val="${1#--model=}"
+            if [[ "$_val" != "default" ]]; then
+                EXTRA_ARGS+=("--model" "$_val")
+            fi
             shift
             ;;
         --bundle)
@@ -50,6 +57,12 @@ PROMPT=$(cat)
 if [[ -z "$PROMPT" ]]; then
     echo "Error: Empty prompt received from stdin" >&2
     exit 1
+fi
+
+# ARG_MAX guard: warn if prompt is very large
+PROMPT_SIZE=${#PROMPT}
+if [ "$PROMPT_SIZE" -gt 131072 ]; then
+    echo "Warning: Prompt is ${PROMPT_SIZE} bytes (>128KB). May hit ARG_MAX limits." >&2
 fi
 
 # Execute amplifier in single (non-interactive) mode with the prompt as argument

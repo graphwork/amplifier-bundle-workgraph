@@ -1,0 +1,17 @@
+{
+  "description": "Verify workgraph+amplifier setup health on session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${AMPLIFIER_HOOKS_DIR}/workgraph-setup/check-setup.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

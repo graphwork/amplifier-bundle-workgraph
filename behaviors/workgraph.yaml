@@ -10,3 +10,4 @@ agents:
 context:
   include:
     - workgraph:context/workgraph-guide.md
+    - workgraph:context/wg-executor-protocol.md
