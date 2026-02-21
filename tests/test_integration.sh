@@ -341,6 +341,135 @@ print(task.get('failure_reason', 'unknown'))
 fi
 
 # --------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
+# Test 6: Version stamps in executor files
+# --------------------------------------------------------------------------
+echo ""
+echo "Test 6: Version stamps"
+
+EXPECTED_VERSION="0.2.0"
+
+# Check amplifier.toml version stamp
+TOML_VERSION=$(head -1 "$BUNDLE_DIR/executor/amplifier.toml" | grep -oP 'v\K[0-9.]+' || echo "unknown")
+if [ "$TOML_VERSION" = "$EXPECTED_VERSION" ]; then
+    pass "amplifier.toml has version stamp (v$TOML_VERSION)"
+else
+    fail "amplifier.toml has version stamp" "Expected v$EXPECTED_VERSION, got v$TOML_VERSION"
+fi
+
+# Check amplifier-run.sh version stamp
+RUN_VERSION=$(sed -n '3p' "$BUNDLE_DIR/executor/amplifier-run.sh" | grep -oP 'v\K[0-9.]+' || echo "unknown")
+if [ "$RUN_VERSION" = "$EXPECTED_VERSION" ]; then
+    pass "amplifier-run.sh has version stamp (v$RUN_VERSION)"
+else
+    fail "amplifier-run.sh has version stamp" "Expected v$EXPECTED_VERSION, got v$RUN_VERSION"
+fi
+
+# --------------------------------------------------------------------------
+# Test 7: SessionStart hook files
+# --------------------------------------------------------------------------
+echo ""
+echo "Test 7: SessionStart hook files"
+
+HOOK_DIR="$BUNDLE_DIR/hooks/workgraph-setup"
+
+if [ -f "$HOOK_DIR/hooks.json" ]; then
+    pass "hooks.json exists"
+    
+    # Validate JSON syntax
+    python3 -c "import json; json.load(open('$HOOK_DIR/hooks.json'))" 2>/dev/null \
+        && pass "hooks.json is valid JSON" \
+        || fail "hooks.json is valid JSON" "Invalid JSON"
+else
+    fail "hooks.json exists" "File not found"
+fi
+
+if [ -f "$HOOK_DIR/check-setup.sh" ]; then
+    pass "check-setup.sh exists"
+    
+    # Check it's executable
+    if [ -x "$HOOK_DIR/check-setup.sh" ]; then
+        pass "check-setup.sh is executable"
+    else
+        fail "check-setup.sh is executable" "Not executable"
+    fi
+    
+    # Check it has the expected version
+    HOOK_VERSION=$(grep -oP 'BUNDLE_VERSION="\K[0-9.]+' "$HOOK_DIR/check-setup.sh" || echo "unknown")
+    if [ "$HOOK_VERSION" = "$EXPECTED_VERSION" ]; then
+        pass "check-setup.sh has correct bundle version ($HOOK_VERSION)"
+    else
+        fail "check-setup.sh has correct bundle version" "Expected $EXPECTED_VERSION, got $HOOK_VERSION"
+    fi
+else
+    fail "check-setup.sh exists" "File not found"
+fi
+
+# --------------------------------------------------------------------------
+# Test 8: Provider sync script
+# --------------------------------------------------------------------------
+echo ""
+echo "Test 8: Provider sync script"
+
+SYNC_SCRIPT="$BUNDLE_DIR/scripts/sync-provider-cache.sh"
+
+if [ -f "$SYNC_SCRIPT" ]; then
+    pass "sync-provider-cache.sh exists"
+    
+    # Check it's executable
+    if [ -x "$SYNC_SCRIPT" ]; then
+        pass "sync-provider-cache.sh is executable"
+    else
+        fail "sync-provider-cache.sh is executable" "Not executable"
+    fi
+    
+    # Check it has proper bash shebang
+    if head -1 "$SYNC_SCRIPT" | grep -q "^#!/usr/bin/env bash"; then
+        pass "sync-provider-cache.sh has proper shebang"
+    else
+        fail "sync-provider-cache.sh has proper shebang" "Missing or wrong shebang"
+    fi
+else
+    fail "sync-provider-cache.sh exists" "File not found"
+fi
+
+# --------------------------------------------------------------------------
+# Test 9: setup.sh --check mode
+# --------------------------------------------------------------------------
+echo ""
+echo "Test 9: setup.sh --check mode"
+
+SETUP_SCRIPT="$BUNDLE_DIR/setup.sh"
+
+if [ -f "$SETUP_SCRIPT" ]; then
+    pass "setup.sh exists"
+    
+    # Check it's executable
+    if [ -x "$SETUP_SCRIPT" ]; then
+        pass "setup.sh is executable"
+    else
+        fail "setup.sh is executable" "Not executable"
+    fi
+    
+    # Check --check flag is supported
+    if "$SETUP_SCRIPT" --help 2>&1 | grep -q "\-\-check"; then
+        pass "setup.sh supports --check flag"
+    else
+        fail "setup.sh supports --check flag" "Missing --check in help"
+    fi
+    
+    # Check --force flag is supported
+    if "$SETUP_SCRIPT" --help 2>&1 | grep -q "\-\-force"; then
+        pass "setup.sh supports --force flag"
+    else
+        fail "setup.sh supports --force flag" "Missing --force in help"
+    fi
+else
+    fail "setup.sh exists" "File not found"
+fi
+
+# --------------------------------------------------------------------------
 # Summary
 # --------------------------------------------------------------------------
 echo ""
