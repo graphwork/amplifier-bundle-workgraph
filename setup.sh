@@ -70,6 +70,75 @@ if [ "$PROJECT_DIR" != "." ]; then
     cd "$PROJECT_DIR"
 fi
 
+# ============================================================
+# Check mode: validate without modifying anything
+# ============================================================
+if [ "$CHECK_MODE" = true ]; then
+    echo "=== Amplifier + Workgraph Setup Check (v$BUNDLE_VERSION) ==="
+    echo ""
+    ISSUES=0
+
+    # Prerequisites
+    if command -v amplifier &>/dev/null; then
+        echo "  amplifier: $(command -v amplifier) ✓"
+    else
+        echo "  amplifier: NOT FOUND ✗"; ISSUES=$((ISSUES+1))
+    fi
+    if command -v wg &>/dev/null; then
+        echo "  wg: $(command -v wg) ✓"
+    else
+        echo "  wg: NOT FOUND ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    # Bundle
+    if BUNDLE_LIST=$(amplifier bundle list 2>&1) && echo "$BUNDLE_LIST" | grep -qw "workgraph"; then
+        echo "  workgraph bundle: installed ✓"
+    else
+        echo "  workgraph bundle: NOT INSTALLED ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    # Executor
+    if [ -f ".workgraph/executors/amplifier.toml" ]; then
+        INSTALLED_VER=$(head -1 .workgraph/executors/amplifier.toml | grep -oP 'v\K[0-9.]+' || echo "unknown")
+        if [ "$INSTALLED_VER" = "$BUNDLE_VERSION" ]; then
+            echo "  executor: v$INSTALLED_VER ✓"
+        else
+            echo "  executor: v$INSTALLED_VER (expected v$BUNDLE_VERSION) ✗"; ISSUES=$((ISSUES+1))
+        fi
+    else
+        echo "  executor: NOT INSTALLED ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    if [ -x ".workgraph/executors/amplifier-run.sh" ]; then
+        echo "  amplifier-run.sh: executable ✓"
+    else
+        echo "  amplifier-run.sh: MISSING or not executable ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    # Coordinator config
+    if [ -f ".workgraph/config.toml" ] && grep -q 'executor.*=.*"amplifier"' .workgraph/config.toml 2>/dev/null; then
+        echo "  coordinator executor: amplifier ✓"
+    else
+        echo "  coordinator executor: NOT SET to amplifier ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    # Hook
+    if [ -f ".amplifier/hooks/workgraph-setup/check-setup.sh" ]; then
+        echo "  validation hook: installed ✓"
+    else
+        echo "  validation hook: NOT INSTALLED ✗"; ISSUES=$((ISSUES+1))
+    fi
+
+    echo ""
+    if [ "$ISSUES" -eq 0 ]; then
+        echo "All checks passed ✓"
+        exit 0
+    else
+        echo "$ISSUES issue(s) found. Run ./setup.sh to fix."
+        exit 1
+    fi
+fi
+
 echo "=== Amplifier + Workgraph Setup (v$BUNDLE_VERSION) ==="
 echo ""
 
@@ -108,19 +177,11 @@ echo ""
 echo "[2/5] Adding workgraph bundle to Amplifier..."
 
 # Check if bundle is already installed
-if amplifier bundle list 2>/dev/null | grep -q "^workgraph "; then
-    INSTALLED_VER=$(amplifier bundle list 2>/dev/null | grep "^workgraph " | awk '{print $2}' | tr -d '()')
-    echo "      Bundle 'workgraph' already installed (v$INSTALLED_VER)"
-    
-    if [ "$INSTALLED_VER" != "$BUNDLE_VERSION" ]; then
-        echo "      Updating to v$BUNDLE_VERSION..."
-        amplifier bundle remove workgraph 2>/dev/null || true
-        amplifier bundle add "$BUNDLE_URI"
-    else
-        echo "      Already at latest version ✓"
-    fi
+if BUNDLE_LIST=$(amplifier bundle list 2>&1) && echo "$BUNDLE_LIST" | grep -qw "workgraph"; then
+    echo "      Bundle 'workgraph' already installed ✓"
 else
     amplifier bundle add "$BUNDLE_URI"
+    echo "      Bundle 'workgraph' added ✓"
 fi
 echo "      Bundle 'workgraph' v$BUNDLE_VERSION installed ✓"
 echo ""
