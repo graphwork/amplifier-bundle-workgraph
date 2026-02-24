@@ -26,8 +26,8 @@ if [ -d ".workgraph" ]; then
     if [ ! -f ".workgraph/executors/amplifier.toml" ]; then
         ISSUES+=("Executor not installed (.workgraph/executors/amplifier.toml missing). Run setup.sh.")
     else
-        # 4. Version check
-        INSTALLED_VER=$(head -1 .workgraph/executors/amplifier.toml | grep -oP 'v\K[0-9.]+' || echo "unknown")
+        # 4. Version check - use sed for portability (grep -oP is GNU-only)
+        INSTALLED_VER=$(sed -n '1s/.*v\([0-9.]*\).*/\1/p' .workgraph/executors/amplifier.toml 2>/dev/null || echo "unknown")
         if [ "$INSTALLED_VER" != "$BUNDLE_VERSION" ]; then
             ISSUES+=("Executor version mismatch: installed v${INSTALLED_VER}, bundle v${BUNDLE_VERSION}. Run setup.sh to upgrade.")
         fi
@@ -48,13 +48,16 @@ fi
 # 7. Provider patch check (only if source override exists)
 SETTINGS="$HOME/.amplifier/settings.yaml"
 if [ -f "$SETTINGS" ]; then
-    OVERRIDE=$(python3 -c "
-import yaml
-with open('$SETTINGS') as f:
-    cfg = yaml.safe_load(f)
-p = cfg.get('sources',{}).get('modules',{}).get('provider-openai','')
-if p: print(p)
-" 2>/dev/null || true)
+    # Use grep/sed to extract provider-openai source from YAML (avoid PyYAML dependency)
+    OVERRIDE=$(sed -n '/^sources:/,/^[^ ]/{
+        /modules:/,/^[^ ]/{
+            /provider-openai:/{ 
+                s/.*provider-openai:[ "]*//
+                s/[" ]*$//
+                p
+            }
+        }
+    }' "$SETTINGS" 2>/dev/null | head -1)
 
     if [ -n "$OVERRIDE" ] && [ -d "$OVERRIDE" ]; then
         CACHE_DIR=$(ls -d "$HOME/.amplifier/cache/amplifier-module-provider-openai-"*/ 2>/dev/null | head -1)
@@ -74,11 +77,17 @@ if [ ${#ISSUES[@]} -eq 0 ]; then
     exit 0  # All good, no context injection
 fi
 
-# Build warning message
-MSG="WORKGRAPH SETUP ISSUES:\\n"
+# Build warning message with proper JSON escaping
+MSG="WORKGRAPH SETUP ISSUES:"
 for issue in "${ISSUES[@]}"; do
-    MSG+="  - $issue\\n"
+    # Escape backslashes first, then quotes, then newlines for JSON
+    escaped_issue="$issue"
+    escaped_issue="${escaped_issue//\\/\\\\}"  # Escape backslashes
+    escaped_issue="${escaped_issue//\"/\\\"}"   # Escape quotes
+    escaped_issue="${escaped_issue//$'\n'/\\n}" # Escape newlines
+    MSG="${MSG}\n  - ${escaped_issue}"
 done
 
-printf '{"contextInjection": "%s"}' "$MSG"
+JSON_OUTPUT="{\"contextInjection\": \"${MSG}\"}"
+printf '%s' "$JSON_OUTPUT"
 exit 0

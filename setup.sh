@@ -272,13 +272,16 @@ echo ""
 # ============================================================
 SETTINGS="$HOME/.amplifier/settings.yaml"
 if [ -f "$SETTINGS" ]; then
-    OVERRIDE=$(python3 -c "
-import yaml
-with open('$SETTINGS') as f:
-    cfg = yaml.safe_load(f)
-p = cfg.get('sources',{}).get('modules',{}).get('provider-openai','')
-if p: print(p)
-" 2>/dev/null || true)
+    # Use grep/sed to extract provider-openai source from YAML (avoid PyYAML dependency)
+    OVERRIDE=$(sed -n '/^sources:/,/^[^ ]/{
+        /modules:/,/^[^ ]/{
+            /provider-openai:/{
+                s/.*provider-openai:[ "]*//
+                s/[" ]*$//
+                p
+            }
+        }
+    }' "$SETTINGS" 2>/dev/null | head -1)
     
     if [ -n "$OVERRIDE" ] && [ -d "$OVERRIDE" ]; then
         CACHE_DIR=$(ls -d "$HOME/.amplifier/cache/amplifier-module-provider-openai-"*/ 2>/dev/null | head -1)
