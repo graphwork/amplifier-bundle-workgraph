@@ -38,42 +38,55 @@ template = """
 
 ## Workgraph Protocol
 
-You are running as a workgraph executor. Follow this protocol exactly:
+You are running as a workgraph executor. The workgraph directory is at `{{working_dir}}/.workgraph/`.
+
+**CRITICAL**: Always run `wg` commands from `{{working_dir}}/` (the project root where `.workgraph/` lives). If you cd elsewhere to do work, use `wg -d {{working_dir}}/.workgraph` or cd back before running wg commands.
+
+### First Steps
+
+Orient yourself:
+```
+cd {{working_dir}}
+wg quickstart 2>&1 | head -30
+wg status
+wg show {{task_id}}
+```
 
 ### During Work
 
 Log progress regularly:
 ```
-wg log {{task_id}} "description of what you're doing"
+wg -d {{working_dir}}/.workgraph log {{task_id}} "description of what you're doing"
 ```
 
 Record any files you create or significantly modify:
 ```
-wg artifact {{task_id}} path/to/file
+wg -d {{working_dir}}/.workgraph artifact {{task_id}} path/to/file
 ```
 
 ### On Completion
 
 When your work is done and verified:
 ```
-wg done {{task_id}}
+wg -d {{working_dir}}/.workgraph done {{task_id}}
 ```
 
 ### On Failure
 
 If you cannot complete the task:
 ```
-wg fail {{task_id}} --reason "specific reason"
+wg -d {{working_dir}}/.workgraph fail {{task_id}} --reason "specific reason"
 ```
 
 ## Rules
 
 1. Focus on THIS task only -- do not modify the task graph or claim other tasks
-2. Log progress at least every few minutes so the project has visibility
-3. Record all artifacts so downstream tasks know what you produced
-4. Read `wg context {{task_id}}` if you need more detail from upstream work
-5. Always mark done or fail before finishing -- never exit silently
-6. Use `wg show {{task_id}}` to review the full task details and acceptance criteria
+2. ALWAYS use `wg -d {{working_dir}}/.workgraph` when running wg commands from outside the project root
+3. Log progress at least every few minutes so the project has visibility
+4. Record all artifacts so downstream tasks know what you produced
+5. Read `wg -d {{working_dir}}/.workgraph context {{task_id}}` if you need more detail from upstream work
+6. Always mark done or fail before finishing -- never exit silently
+7. Run `wg -d {{working_dir}}/.workgraph show {{task_id}}` to review the full task details
 
 Work carefully, test your changes, and mark done when complete.
 """
