@@ -63,9 +63,141 @@ config:
 **3. Verify the configuration:**
 
 ```bash
-# Test with a simple prompt
-amplifier run "Say hello" --provider openrouter
+# IMPORTANT: Use --provider openai, not --provider openrouter
+# The OpenRouter configuration is mounted internally as "openai"
+amplifier run "Say hello" --provider openai
 ```
+
+---
+
+### Important: Provider Name
+
+The OpenRouter configuration is mounted internally as "openai", not "openrouter".
+Use `--provider openai` when running Amplifier:
+
+```bash
+amplifier run "Your prompt" --provider openai
+```
+
+---
+
+### Advanced: OpenRouter-Specific Options
+
+When using OpenRouter, the following features are automatically configured.
+You can override these in your settings:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enable_native_tools` | true | Enable OpenAI apply_patch_call tool format |
+| `enable_reasoning_replay` | true | Enable reasoning state preservation |
+| `enable_store` | false | Enable OpenAI Store feature |
+| `enable_background` | false | Enable background/async mode |
+
+Example to disable native tools if your model doesn't support them:
+
+```yaml
+config:
+  providers:
+    - name: openrouter
+      module: provider-openai
+      config:
+        api_key: sk-or-v1-YOUR-OPENROUTER-KEY
+        base_url: https://openrouter.ai/api/v1
+        default_model: anthropic/claude-3.5-sonnet
+        enable_native_tools: false
+        enable_reasoning_replay: false
+```
+
+---
+
+## Step 2b: Multi-Provider Configuration
+
+Amplifier supports multiple providers simultaneously. This allows you to switch
+between providers per-session using `--provider`, while keeping a default for
+everyday use.
+
+### How It Works
+
+- Providers are listed under `config.providers[]` in `~/.amplifier/settings.yaml`
+- The `priority` field controls which provider is active by default (lower = higher precedence)
+- `amplifier run --provider <name>` temporarily overrides the default for that session
+- The `<name>` is the **module shorthand** (e.g., `anthropic`, `openai`), not the `name:` field in YAML
+
+### Example: Anthropic + OpenRouter
+
+```yaml
+# ~/.amplifier/settings.yaml
+config:
+  providers:
+    # Primary provider — direct Anthropic (priority 1 = default)
+    - module: provider-anthropic
+      source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+      config:
+        api_key: ${ANTHROPIC_API_KEY}   # or hardcode your key
+        base_url: https://api.anthropic.com
+        default_model: claude-sonnet-4-20250514
+        priority: 1
+
+    # Secondary provider — OpenRouter (priority 10 = fallback)
+    - name: openrouter
+      module: provider-openai
+      source: git+https://github.com/microsoft/amplifier-module-provider-openai@main
+      config:
+        api_key: sk-or-v1-YOUR-OPENROUTER-KEY
+        base_url: https://openrouter.ai/api/v1
+        default_model: anthropic/claude-3.5-sonnet
+        priority: 10
+```
+
+### Switching Providers
+
+```bash
+# Use default provider (anthropic, priority 1)
+amplifier run "Your prompt"
+
+# Explicitly select Anthropic
+amplifier run "Your prompt" --provider anthropic
+
+# Switch to OpenRouter for this session
+amplifier run "Your prompt" --provider openai
+
+# OpenRouter with a specific model
+amplifier run "Your prompt" --provider openai --model deepseek/deepseek-chat-v3-0324
+```
+
+### Checking Active Provider
+
+```bash
+# Show which provider is active by default
+amplifier provider current
+```
+
+### Changing the Default Provider
+
+```bash
+# Make OpenRouter the default (sets priority 1, demotes others to 10)
+amplifier provider use openai --model anthropic/claude-3.5-sonnet
+
+# Switch back to Anthropic as default
+amplifier provider use anthropic --model claude-sonnet-4-20250514
+```
+
+### Important: Provider Names vs Module IDs
+
+The `--provider` flag uses the **module shorthand**, not the `name:` field:
+
+| Module | `--provider` value | Notes |
+|--------|-------------------|-------|
+| `provider-anthropic` | `anthropic` | Direct Anthropic API |
+| `provider-openai` | `openai` | OpenAI or OpenAI-compatible (e.g., OpenRouter) |
+| `provider-azure-openai` | `azure-openai` | Azure OpenAI |
+| `provider-gemini` | `gemini` | Google Gemini |
+| `provider-ollama` | `ollama` | Local Ollama |
+
+**Limitation**: You cannot have two providers with the same module and select between them
+via `--provider`. For example, direct OpenAI + OpenRouter both use `provider-openai`, so
+`--provider openai` would activate whichever has higher priority. Use different priority
+values and `amplifier provider use` to switch the default.
 
 ---
 
@@ -230,11 +362,33 @@ Run the setup script again:
 ./setup.sh
 ```
 
+### "Provider 'openrouter' not configured"
+
+You're using `--provider openrouter` but the provider is mounted as "openai".
+Use `--provider openai` instead:
+
+```bash
+amplifier run "Your prompt" --provider openai
+```
+
 ### Provider errors (OpenRouter)
 
 1. Verify your API key in `~/.amplifier/settings.yaml`
 2. Check your balance at [openrouter.ai/activity](https://openrouter.ai/activity)
 3. Try a different model if rate limited
+
+### "No API key found for <provider>"
+
+Both the `api_key` config field and the environment variable (e.g., `ANTHROPIC_API_KEY`,
+`OPENAI_API_KEY`) are missing. Add the key to your settings.yaml or export the env var:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+# or add api_key: sk-ant-... under the provider's config in settings.yaml
+```
+
+If one provider fails but another succeeds, Amplifier shows a "Partial provider failure"
+warning and continues with the available provider.
 
 ### Agent doesn't know wg commands
 
